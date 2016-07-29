@@ -161,14 +161,26 @@ def init_config():
         action="store_true",
         dest="test",
         default=None)
-
     parser.add_argument(
         "-ep",
         "--exclude-plugins",
         help="Pass a list of plugins to exclude from the loading process (e.g, logger,web).",
         type=str,
         dest="exclude_plugins")
-
+    parser.add_argument(
+        "-H",
+        "--HOST",
+        help="Run the flask webserver on this IP(4/6) address (Default: 127.0.0.1)",
+        type=str,
+        default="127.0.0.1",
+        dest="host")
+    parser.add_argument(
+        "-P",
+        "--PORT",
+        help="Run the flask webserver on this TCP Port (Default: 8000)",
+        type=int,
+        default=8000,
+        dest="port")
     config = parser.parse_args()
 
     if config.json:
