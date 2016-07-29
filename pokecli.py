@@ -42,7 +42,6 @@ if sys.version_info >= (2, 7, 9):
     # pylint: disable=protected-access
     ssl._create_default_https_context = ssl._create_unverified_context
 
-
 def init_config():
     default_config = {
         "mode": "all",
@@ -222,7 +221,6 @@ def init_config():
 
     return config
 
-
 def main():
     # log settings
     # log format
@@ -234,7 +232,6 @@ def main():
 
     logger.log('[x] PokemonGO Bot v1.0', 'green')
     logger.log('[x] Configuration initialized', 'yellow')
-
     try:
         bot = PokemonGoBot(config)
         bot.start()
@@ -242,7 +239,11 @@ def main():
         logger.log('[x] Starting PokemonGo Bot....', 'green')
 
         while True:
-            bot.take_step()
+            try:
+                bot.take_step()
+            except RuntimeError as e:
+                logger.log('[x] Got nothing from pokestop. Probably softbanned, yolocontinuing in 5 seconds:\n"{}"'.format(e[:25]), 'red')
+                time.sleep(5)
 
     except KeyboardInterrupt:
         logger.log('[x] Exiting PokemonGo Bot', 'red')

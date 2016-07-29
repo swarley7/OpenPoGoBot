@@ -6,10 +6,8 @@ from flask_socketio import SocketIO, send, emit
 
 from pokemongo_bot import logger, event_manager
 from pokemongo_bot.event_manager import manager
-
-from pokecli import config
-
 # pylint: disable=unused-variable, unused-argument
+from pokecli import init_config
 
 logging.getLogger('socketio').disabled = True
 logging.getLogger('engineio').disabled = True
@@ -50,6 +48,7 @@ def run_flask(host, port):
 
     socketio.run(app, host=host, port=port, debug=False, use_reloader=False, log_output=False)
 
+config = init_config()
 WEB_THREAD = Thread(target=run_flask, args=(config.host, config.port))
 WEB_THREAD.daemon = True
 WEB_THREAD.start()
