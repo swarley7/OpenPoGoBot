@@ -86,11 +86,11 @@ class PokemonCatchWorker(object):
 
     def work(self):
         encounter_id = self.pokemon['encounter_id']
-        spawnpoint_id = self.pokemon['spawnpoint_id']
+        spawnpoint_id = self.pokemon['spawn_point_id']
         player_latitude = self.pokemon['latitude']
         player_longitude = self.pokemon['longitude']
         self.api.encounter(encounter_id=encounter_id,
-                           spawnpoint_id=spawnpoint_id,
+                           spawn_point_id=spawnpoint_id,
                            player_latitude=player_latitude,
                            player_longitude=player_longitude)
         response_dict = self.api.call()
@@ -98,7 +98,7 @@ class PokemonCatchWorker(object):
         if response_dict is None:
             return
 
-        encounter = response_dict.get('responses', {}).get('ENCOUNTER', {})
+        encounter = response_dict['encounter']
         status = encounter.get('status', {})
         if encounter is None or status is None:
             return  # servers are down

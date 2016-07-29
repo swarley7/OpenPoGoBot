@@ -3,6 +3,7 @@
 from __future__ import print_function
 from math import radians, sqrt, sin, cos, atan2
 import datetime
+import time
 import json
 import logging
 import random
@@ -20,6 +21,7 @@ from pokemongo_bot.item_list import Item
 from pokemongo_bot.stepper import Stepper
 from pokemongo_bot.plugins import PluginManager
 from pgoapi import PGoApi
+from api import PoGoApi
 from geopy.geocoders import GoogleV3
 
 
@@ -194,47 +196,42 @@ class PokemonGoBot(object):
             logging.getLogger("rpc_api").setLevel(logging.ERROR)
 
     def _setup_api(self):
-        # instantiate pgoapi
-        self.api = PGoApi()
+        # instantiate api
+        self.api = PoGoApi(provider=self.config.auth_service, username=self.config.username, password=self.config.password)
+        #self.api = PGoApi()
         # provide player position on the earth
 
         self._set_starting_position()
 
-        if not self.api.login(self.config.auth_service,
-                              str(self.config.username),
-                              str(self.config.password)):
+        #while not self.api.login(self.config.auth_service, self.config.username, self.config.password):
+        while not self.api.login():
             logger.log('Login Error, server busy', 'red')
-            exit(0)
+            logger.log('Waiting 15 seconds before trying again...')
+            time.sleep(15)
 
         # chain subrequests (methods) into one RPC call
 
         # get player profile call
         # ----------------------
-        self.api.get_player()
+        self.api.get_player().get_inventory()
 
         response_dict = self.api.call()
         if response_dict is not None:
-            # print('Response dictionary: \n\r{}'.format(json.dumps(response_dict, indent=2)))
-
-            player = response_dict['responses']['GET_PLAYER']['player_data']
-
-            # @@@ TODO: Convert this to d/m/Y H:M:S
-            creation_date = datetime.datetime.fromtimestamp(
-                player['creation_timestamp_ms'] / 1e3)
+            player = response_dict['player']
+            inventory = response_dict['inventory']
+            pokemon = response_dict['pokemon']
+            creation_date = player.get_creation_date()
 
             balls_stock = self.pokeball_inventory()
 
-            pokecoins = player['currencies'][0].get('amount', '0')
-            stardust = player['currencies'][1].get('amount', '0')
+            pokecoins = player.pokecoin
+            stardust = player.stardust
 
             logger.log('[#]')
-            logger.log('[#] Username: {username}'.format(**player))
+            logger.log('[#] Username: {}'.format(player.username))
             logger.log('[#] Acccount Creation: {}'.format(creation_date))
-            logger.log('[#] Bag Storage: {}/{}'.format(
-                self.get_inventory_count('item'), player['max_item_storage']))
-            logger.log('[#] Pokemon Storage: {}/{}'.format(
-                self.get_inventory_count('pokemon'), player[
-                    'max_pokemon_storage']))
+            logger.log('[#] Bag Storage: {}/{}'.format(len(inventory), player.max_item_storage))
+            logger.log('[#] Pokemon Storage: {}/{}'.format(len(pokemon), player.max_pokemon_storage))
             logger.log('[#] Stardust: {}'.format(stardust))
             logger.log('[#] Pokecoins: {}'.format(pokecoins))
             logger.log('[#] PokeBalls: {}'.format(balls_stock[1]))
@@ -273,37 +270,26 @@ class PokemonGoBot(object):
     def update_inventory(self):
         self.api.get_inventory()
         response = self.api.call()
-        self.inventory = list()
-        inventory_items = response.get('responses', {}).get('GET_INVENTORY', {}).get('inventory_delta', {}).get('inventory_items')
-        if inventory_items is None:
-            return
-        for item in inventory_items:
-            item_data = item.get('inventory_item_data', {}).get('item')
-            if item_data is None or 'item_id' not in item_data or 'count' not in item_data:
-                continue
-            self.inventory.append(item_data)
+        self.inventory = response["inventory"]
 
     def pokeball_inventory(self):
-        self.api.get_player().get_inventory()
-
-        inventory_req = self.api.call()
-        inventory_list = convert_to_utf8(inventory_req['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
-        with open('web/inventory-{}.json'.format(self.config.username), 'w') as outfile:
-            json.dump(inventory_list, outfile)
-
-        # get player balls stock
-        # ----------------------
         balls_stock = {Item.ITEM_POKE_BALL.value: 0,
                        Item.ITEM_GREAT_BALL.value: 0,
                        Item.ITEM_ULTRA_BALL.value: 0,
                        Item.ITEM_MASTER_BALL.value: 0}
 
-        for item in inventory_list:
-            item_data = item.get('inventory_item_data', {}).get('item')
-            if item_data is None:
-                continue
-            item_id = int(item_data['item_id'])
-            item_count = int(item_data['count'])
+        self.api.get_player().get_inventory()
+
+        result = self.api.call()
+        if result is None:
+            return balls_stock
+
+        inventory_list = result["inventory"]
+        with open('web/inventory-{}.json'.format(self.config.username), 'w') as outfile:
+            json.dump(inventory_list, outfile)
+
+        for item_id in inventory_list:
+            item_count = inventory_list[item_id]
             if item_id in balls_stock:
                 balls_stock[item_id] = item_count
         return balls_stock
@@ -367,7 +353,7 @@ class PokemonGoBot(object):
         self.api.get_inventory()
         response_dict = self.api.call()
 
-        if response_dict is None:
+        if response_dict is False:
             return 0
         pokecount = 0
         itemcount = 1
@@ -391,10 +377,10 @@ class PokemonGoBot(object):
     def get_player_info(self):
         self.api.get_inventory()
         response_dict = self.api.call()
-        if response_dict is None:
+        if response_dict is False:
             logger.log("Couldn't get player info!", "red")
             return
-        inventory_items = inventory_items = response_dict.get('responses', {}).get('GET_INVENTORY', {}).get('inventory_delta', {}).get('inventory_items')
+        inventory_items = response_dict.get('responses', {}).get('GET_INVENTORY', {}).get('inventory_delta', {}).get('inventory_items')
         if inventory_items is None:
             return
         for item in inventory_items:

@@ -6,7 +6,7 @@ import json
 from s2sphere import CellId, LatLng
 from pgoapi.utilities import f2i
 from pokemongo_bot.human_behaviour import sleep, random_lat_long_delta
-from pokemongo_bot.utils import distance, i2f, format_time, convert_to_utf8
+from pokemongo_bot.utils import distance, format_time, convert_to_utf8
 import pokemongo_bot.logger as logger
 
 
@@ -33,7 +33,7 @@ class Stepper(object):
             position = (self.origin_lat, self.origin_lon, 0.0)
         else:
             position_lat, position_lng, _ = self.api.get_position()
-            position = (i2f(position_lat), i2f(position_lng), 0.0)
+            position = (position_lat, position_lng, 0.0)
 
         self.api.set_position(*position)
         self._work_at_position(position[0], position[1], True)
@@ -41,32 +41,32 @@ class Stepper(object):
 
     def walk_to(self, speed, lat, lng, alt):
         position_lat, position_lng, _ = self.api.get_position()
-        dist = distance(i2f(position_lat), i2f(position_lng), lat, lng)
+        dist = distance(position_lat, position_lng, lat, lng)
         steps = (dist / (self.AVERAGE_STRIDE_LENGTH_IN_METRES * speed))
 
-        logger.log("[#] Walking from " + str((i2f(position_lat), i2f(position_lng))) + " to " + str(str((lat, lng))) + " for approx. " + str(format_time(ceil(steps))))
+        logger.log("[#] Walking from " + str((position_lat, position_lng)) + " to " + str((lat, lng)) + " for approx. " + str(format_time(ceil(steps))))
         if steps != 0:
-            d_lat = (lat - i2f(position_lat)) / steps
-            d_long = (lng - i2f(position_lng)) / steps
+            d_lat = (lat - position_lat) / steps
+            d_long = (lng - position_lng) / steps
 
             for _ in range(int(steps)):
                 position_lat, position_lng, _ = self.api.get_position()
-                c_lat = i2f(position_lat) + d_lat + random_lat_long_delta()
-                c_long = i2f(position_lng) + d_long + random_lat_long_delta()
+                c_lat = position_lat + d_lat + random_lat_long_delta()
+                c_long = position_lng + d_long + random_lat_long_delta()
                 self.api.set_position(c_lat, c_long, alt)
 
                 self.bot.heartbeat()
                 sleep(1)  # sleep one second plus a random delta
 
                 position_lat, position_lng, _ = self.api.get_position()
-                self._work_at_position(i2f(position_lat), i2f(position_lng), False)
+                self._work_at_position(position_lat, position_lng, False)
 
             self.bot.heartbeat()
             logger.log("[#] Finished walking")
 
     def _get_cell_id_from_latlong(self, radius=10):
         position_lat, position_lng, _ = self.api.get_position()
-        origin = CellId.from_lat_lng(LatLng.from_degrees(i2f(position_lat), i2f(position_lng))).parent(15)
+        origin = CellId.from_lat_lng(LatLng.from_degrees(position_lat, position_lng)).parent(15)
         walk = [origin.id()]
 
         # 10 before and 10 after
@@ -91,7 +91,7 @@ class Stepper(object):
         if response_dict is None:
             return
         # Passing data through last-location and location
-        map_objects = response_dict.get("responses", {}).get("GET_MAP_OBJECTS")
+        map_objects = response_dict["worldmap"].data
         if map_objects is not None:
             with open("web/location-{}.json".format(self.config.username), "w") as outfile:
                 json.dump({"lat": lat, "lng": lng, "cells": convert_to_utf8(map_objects.get("map_cells"))}, outfile)
