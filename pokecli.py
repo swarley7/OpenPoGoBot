@@ -34,6 +34,7 @@ import argparse
 import ssl
 import logging
 import sys
+import time
 from pokemongo_bot import logger
 from pokemongo_bot import PokemonGoBot
 
@@ -241,8 +242,8 @@ def main():
         while True:
             try:
                 bot.take_step()
-            except RuntimeError as e:
-                logger.log('[x] Got nothing from pokestop. Probably softbanned, yolocontinuing in 5 seconds:\n"{}"'.format(e[:25]), 'red')
+            except RuntimeError:
+                logger.log('[x] Got nothing from pokestop. Probably softbanned, yolocontinuing in 5 seconds', 'red')
                 time.sleep(5)
 
     except KeyboardInterrupt:
