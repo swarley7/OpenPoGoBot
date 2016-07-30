@@ -249,12 +249,14 @@ def main():
                 except AttributeError as e:
                     logger.log('[x] Error occured: {}'.format(e), 'red')
                     break
-                    
+
         except KeyboardInterrupt:
             logger.log('[x] Exiting PokemonGo Bot', 'red')
             sys.exit(0)
         except Exception as e: # Catch the rest! (of the exceptions)
             logger.log('[x] Something broke. In a big way. Here\'s the stacktrace: {}'.format(e), 'red')
+            logger.log('[x] Trying again in 5 seconds', 'yellow')
+            time.sleep(5)
 
 if __name__ == '__main__':
     main()
