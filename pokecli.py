@@ -169,14 +169,14 @@ def init_config():
         dest="exclude_plugins")
     parser.add_argument(
         "-H",
-        "--HOST",
+        "--host",
         help="Run the flask webserver on this IP(4/6) address (Default: 127.0.0.1)",
         type=str,
         default="127.0.0.1",
         dest="host")
     parser.add_argument(
         "-P",
-        "--PORT",
+        "--port",
         help="Run the flask webserver on this TCP Port (Default: 8000)",
         type=int,
         default=8000,
@@ -233,21 +233,28 @@ def main():
 
     logger.log('[x] PokemonGO Bot v1.0', 'green')
     logger.log('[x] Configuration initialized', 'yellow')
-    try:
-        bot = PokemonGoBot(config)
-        bot.start()
+    while True:
+        try:
+            bot = PokemonGoBot(config)
+            bot.start()
 
-        logger.log('[x] Starting PokemonGo Bot....', 'green')
+            logger.log('[x] Starting PokemonGo Bot....', 'green')
 
-        while True:
-            try:
-                bot.take_step()
-            except RuntimeError:
-                logger.log('[x] Got nothing from pokestop. Probably softbanned, yolocontinuing in 5 seconds', 'red')
-                time.sleep(5)
+            while True:
+                try:
+                    bot.take_step()
+                except RuntimeError:
+                    logger.log('[x] Got nothing from pokestop. Probably softbanned. yolo - continuing in 5 seconds', 'red')
+                    time.sleep(5)
+                except AttributeError as e:
+                    logger.log('[x] Error occured: {}'.format(e), 'red')
+                    break
+                except Exception as e: # Catch the rest! (of the exceptions)
+                    logger.log('[x] Something broke. In a big way. Here\'s the stacktrace: {}'.format(e), 'red')
 
-    except KeyboardInterrupt:
-        logger.log('[x] Exiting PokemonGo Bot', 'red')
+        except KeyboardInterrupt:
+            logger.log('[x] Exiting PokemonGo Bot', 'red')
+            sys.exit(0)
 
 
 if __name__ == '__main__':
